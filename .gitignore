@@ -1,3 +1,4 @@
 node_modules/
 eval.db
 *.db
+index.html
