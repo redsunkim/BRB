@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사업성 평가 시스템</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Malgun Gothic,sans-serif;background:#f0f4f8;color:#1e293b;font-size:14px}
+:root{--primary:#1a3a6c;--primary-light:#2563eb;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--gray:#64748b;--card-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06)}
+/* NAV */
+nav{background:var(--primary);color:#fff;padding:0 24px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.nav-brand{font-size:18px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.nav-editing{font-size:12px;color:#93c5fd;margin-left:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-links{display:flex;gap:4px;margin-left:auto}
+.nav-btn{background:rgba(255,255,255,.1);border:none;color:#fff;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;transition:background .2s}
+.nav-btn:hover{background:rgba(255,255,255,.2)}
+.nav-btn.active{background:rgba(255,255,255,.25);border-bottom:2px solid #60a5fa}
+/* VIEWS */
+.view{display:none;padding:20px 24px;max-width:1200px;margin:0 auto}
+.view.active{display:block}
+/* CARDS */
+.card{background:#fff;border-radius:10px;padding:20px;box-shadow:var(--card-shadow);margin-bottom:16px}
+.card-title{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+/* PROJECT INFO GRID */
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.info-grid .full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:12px;font-weight:600;color:var(--gray)}
+.form-group input,.form-group textarea,.form-group select{border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;transition:border-color .2s;background:#fafafa}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--primary-light);background:#fff}
+.form-group textarea{resize:vertical;min-height:60px}
+/* SCORE BAR */
+.score-bar{background:#fff;border-radius:10px;padding:16px 20px;box-shadow:var(--card-shadow);margin-bottom:16px}
+.score-boxes{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.score-box{border-radius:8px;padding:12px 14px;text-align:center}
+.score-box.total{background:linear-gradient(135deg,#1a3a6c,#2563eb);color:#fff}
+.score-box.s1{background:#eff6ff;border:1px solid #bfdbfe}
+.score-box.s2{background:#f0fdf4;border:1px solid #bbf7d0}
+.score-box.s3{background:#fff7ed;border:1px solid #fed7aa}
+.score-box .label{font-size:11px;font-weight:600;opacity:.8;margin-bottom:4px}
+.score-box .val{font-size:26px;font-weight:800}
+.score-box.total .val{color:#fff}
+.score-box.s1 .val{color:#1d4ed8}
+.score-box.s2 .val{color:#059669}
+.score-box.s3 .val{color:#d97706}
+.score-box .sub{font-size:11px;opacity:.7;margin-top:2px}
+.progress-row{display:flex;align-items:center;gap:10px}
+.progress-bar{flex:1;height:10px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#2563eb,#10b981);transition:width .5s}
+.grade-badge{padding:4px 14px;border-radius:99px;font-size:13px;font-weight:700;white-space:nowrap}
+.grade-S{background:#1a3a6c;color:#fff}
+.grade-A{background:#2563eb;color:#fff}
+.grade-B{background:#10b981;color:#fff}
+.grade-C{background:#f59e0b;color:#fff}
+.grade-D{background:#ef4444;color:#fff}
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#fff;border-radius:10px;padding:6px;box-shadow:var(--card-shadow)}
+.tab-btn{flex:1;padding:9px;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--gray);transition:all .2s}
+.tab-btn.active{background:var(--primary);color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* QUESTION CARDS */
+.q-card{background:#fff;border-radius:10px;padding:16px;box-shadow:var(--card-shadow);margin-bottom:12px;border-left:4px solid #e2e8f0;transition:border-color .2s}
+.q-card.has-selection{border-left-color:var(--primary-light)}
+.q-card.disabled{opacity:.4;pointer-events:none}
+.q-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.q-num{width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.q-title-area{flex:1}
+.q-title{font-size:14px;font-weight:700;color:#1e293b}
+.q-method{font-size:10px;padding:2px 7px;border-radius:99px;background:#f1f5f9;color:var(--gray);font-weight:600;margin-left:6px;vertical-align:middle}
+.q-question{font-size:12px;color:var(--gray);margin-top:3px}
+.q-score-badge{background:#f1f5f9;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--primary);white-space:nowrap}
+.q-options{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.q-option{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:7px;cursor:pointer;transition:all .2s}
+.q-option:hover{border-color:#93c5fd;background:#f8faff}
+.q-option.selected{border-color:var(--primary-light);background:#eff6ff}
+.q-option input[type=radio]{accent-color:var(--primary-light)}
+.q-option .opt-label{flex:1;font-size:13px}
+.q-option .opt-score{font-size:12px;font-weight:700;color:var(--gray)}
+.q-option.selected .opt-score{color:var(--primary-light)}
+.q-note{width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px;font-size:12px;font-family:inherit;resize:none;min-height:40px;background:#fafafa}
+.q-note:focus{outline:none;border-color:#93c5fd}
+.note-label{font-size:11px;color:var(--gray);margin-bottom:3px;font-weight:600}
+/* SECTION ALERT */
+.section-alert{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#92400e;display:none}
+.section-alert.show{display:block}
+/* ACTION BUTTONS */
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{padding:9px 18px;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:#1e4a8a}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#059669}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-warning:hover{background:#d97706}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-outline{background:#fff;border:1.5px solid #e2e8f0;color:#475569}
+.btn-outline:hover{border-color:#94a3b8;background:#f8fafc}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+/* LIST VIEW */
+.list-controls{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.search-input{flex:1;min-width:200px;border:1.5px solid #e2e8f0;border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit}
+.search-input:focus{outline:none;border-color:var(--primary-light)}
+.table-wrap{overflow-x:auto;border-radius:10px;box-shadow:var(--card-shadow)}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
+thead{background:var(--primary);color:#fff}
+th{padding:10px 12px;text-align:left;font-weight:600;white-space:nowrap;font-size:12px}
+td{padding:9px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#f8faff;cursor:pointer}
+tbody tr.selected-row{background:#eff6ff}
+.score-chip{padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;display:inline-block}
+.chip-green{background:#d1fae5;color:#065f46}
+.chip-orange{background:#fef3c7;color:#92400e}
+.chip-red{background:#fee2e2;color:#991b1b}
+.empty-state{text-align:center;padding:60px 20px;color:var(--gray)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+/* COMPARE VIEW */
+.compare-selector{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;padding:4px}
+.compare-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all .2s}
+.compare-item:hover{border-color:#93c5fd}
+.compare-item.checked{border-color:var(--primary-light);background:#eff6ff}
+.compare-item input[type=checkbox]{accent-color:var(--primary-light);width:16px;height:16px}
+.compare-item .ci-name{font-weight:700;flex:1}
+.compare-item .ci-meta{font-size:12px;color:var(--gray)}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-card{background:#fff;border-radius:10px;padding:16px;box-shadow:var(--card-shadow)}
+.chart-card canvas{max-height:280px}
+.compare-table-wrap{overflow-x:auto}
+.compare-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+.compare-table th{background:var(--primary);color:#fff;padding:8px 10px;white-space:nowrap;font-size:11px}
+.compare-table td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.compare-table .section-row td{background:#1a3a6c;color:#fff;font-weight:700;font-size:12px}
+.compare-table .cat-row td{background:#e8eef7;color:var(--primary);font-weight:700}
+.compare-table .subtotal-row td{background:#f0fdf4;font-weight:700;color:#065f46}
+.compare-table .total-row td{background:#dbeafe;font-weight:800;color:#1d4ed8;font-size:13px}
+/* TOAST */
+#toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.15);animation:slideIn .3s ease;display:flex;align-items:center;gap:8px;min-width:200px}
+.toast.green{background:#10b981}
+.toast.orange{background:#f59e0b}
+.toast.red{background:#ef4444}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeOut{to{opacity:0;transform:translateX(100%)}}
+.toast.fade{animation:fadeOut .3s ease forwards}
+/* PRINT */
+@media print {
+  nav,.action-row,.tabs,.list-controls,#toast-container,.btn,button{display:none!important}
+  .view{display:none!important}
+  #print-report{display:block!important}
+  body{background:#fff}
+  .pr-section{page-break-inside:avoid;margin-bottom:20px}
+  .pr-title{font-size:20px;font-weight:800;color:#1a3a6c;border-bottom:2px solid #1a3a6c;padding-bottom:8px;margin-bottom:16px}
+  .pr-info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+  .pr-info-item label{font-size:10px;color:#64748b;font-weight:700}
+  .pr-info-item p{font-size:13px;font-weight:600}
+  .pr-score-boxes{display:flex;gap:16px;margin-bottom:16px}
+  .pr-score-box{border:2px solid #1a3a6c;border-radius:8px;padding:8px 16px;text-align:center}
+  .pr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px}
+  .pr-table th{background:#1a3a6c;color:#fff;padding:6px 8px;text-align:left}
+  .pr-table td{padding:5px 8px;border-bottom:1px solid #e2e8f0}
+  .pr-table tr.section-r td{background:#e8eef7;font-weight:700}
+  .pr-table tr.selected-r{background:#eff6ff}
+}
+#print-report{display:none}
+/* MISC */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.text-muted{color:var(--gray)}
+.mt-4{margin-top:16px}
+.flex-center{display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <span class="nav-brand">📊 사업성 평가 시스템</span>
+  <span class="nav-editing" id="nav-editing"></span>
+  <div class="nav-links">
+    <button class="nav-btn active" id="nav-form" onclick="showView('form')">새 평가 작성</button>
+    <button class="nav-btn" id="nav-list" onclick="showView('list')">사업 목록</button>
+    <button class="nav-btn" id="nav-compare" onclick="showView('compare')">사업 비교</button>
+  </div>
+</nav>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- PRINT REPORT -->
+<div id="print-report"></div>
+
+<!-- VIEW: FORM -->
+<div class="view active" id="view-form">
+  <!-- Project Info -->
+  <div class="card">
+    <div class="card-title">📋 사업 정보</div>
+    <div class="info-grid">
+      <div class="form-group">
+        <label>사업명 *</label>
+        <input type="text" id="f-name" placeholder="사업명을 입력하세요" oninput="updateNavEditing()">
+      </div>
+      <div class="form-group">
+        <label>담당자</label>
+        <input type="text" id="f-manager" placeholder="담당자명">
+      </div>
+      <div class="form-group">
+        <label>부서/팀</label>
+        <input type="text" id="f-department" placeholder="부서명">
+      </div>
+      <div class="form-group">
+        <label>작성일</label>
+        <input type="date" id="f-eval-date">
+      </div>
+      <div class="form-group full">
+        <label>메모</label>
+        <textarea id="f-memo" placeholder="메모를 입력하세요"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score Summary -->
+  <div class="score-bar">
+    <div class="score-boxes">
+      <div class="score-box total">
+        <div class="label">종합점수</div>
+        <div class="val" id="sc-total">0.0</div>
+        <div class="sub" id="sc-grade">D등급</div>
+      </div>
+      <div class="score-box s1">
+        <div class="label">① 수주확도</div>
+        <div class="val" id="sc-s1">0.0</div>
+        <div class="sub">/ 100점</div>
+      </div>
+      <div class="score-box s2">
+        <div class="label">② 사업중요도</div>
+        <div class="val" id="sc-s2">0.0</div>
+        <div class="sub">/ 100점</div>
+      </div>
+      <div class="score-box s3">
+        <div class="label">③ 위험점검</div>
+        <div class="val" id="sc-s3">0.0</div>
+        <div class="sub">/ 100점</div>
+      </div>
+    </div>
+    <div class="progress-row">
+      <span style="font-size:12px;color:var(--gray)">0</span>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <span style="font-size:12px;color:var(--gray)">100</span>
+      <span class="grade-badge grade-D" id="grade-badge-bar">D등급</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(0)">① 수주 확도</button>
+    <button class="tab-btn" onclick="switchTab(1)">② 사업 중요도</button>
+    <button class="tab-btn" onclick="switchTab(2)">③ 위험 점검</button>
+  </div>
+
+  <!-- Tab 0: 수주확도 -->
+  <div class="tab-content active" id="tab-0">
+    <div class="section-alert" id="contract-alert">⚡ 수의계약으로 수주 확도 100점 자동 산정됩니다</div>
+    <div id="q-container-0"></div>
+  </div>
+  <!-- Tab 1: 사업중요도 -->
+  <div class="tab-content" id="tab-1">
+    <div id="q-container-1"></div>
+  </div>
+  <!-- Tab 2: 위험점검 -->
+  <div class="tab-content" id="tab-2">
+    <div id="q-container-2"></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-row">
+    <button class="btn btn-primary" onclick="saveProject()">💾 저장</button>
+    <button class="btn btn-success" onclick="exportExcelSingle()">📥 Excel 내보내기</button>
+    <button class="btn btn-outline" onclick="exportPDF()">🖨️ PDF 내보내기</button>
+    <button class="btn btn-outline" onclick="showView('list')">📋 목록으로</button>
+    <button class="btn btn-outline" onclick="resetForm()">✏️ 새로 작성</button>
+  </div>
+</div>
+
+<!-- VIEW: LIST -->
+<div class="view" id="view-list">
+  <div class="list-controls">
+    <input type="text" class="search-input" id="search-input" placeholder="사업명, 담당자 검색..." oninput="renderList()">
+    <button class="btn btn-primary" onclick="showView('form');resetForm()">+ 새 평가 작성</button>
+    <button class="btn btn-outline" id="compare-selected-btn" onclick="compareSelected()" disabled>📊 선택 항목 비교</button>
+  </div>
+  <div class="table-wrap">
+    <table id="projects-table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)"></th>
+          <th>#</th>
+          <th>사업명</th>
+          <th>담당자</th>
+          <th>부서</th>
+          <th>작성일</th>
+          <th>①수주확도</th>
+          <th>②사업중요도</th>
+          <th>③위험점검</th>
+          <th>종합</th>
+          <th>등급</th>
+          <th>작업</th>
+        </tr>
+      </thead>
+      <tbody id="list-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIEW: COMPARE -->
+<div class="view" id="view-compare">
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start">
+    <div>
+      <div class="card">
+        <div class="card-title">📌 비교 사업 선택 (최대 5개)</div>
+        <div class="compare-selector" id="compare-selector"></div>
+        <div class="mt-4">
+          <button class="btn btn-primary" style="width:100%" onclick="updateCompare()">🔄 비교 업데이트</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div id="compare-charts" style="display:none">
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="card-title">레이더 차트</div>
+            <canvas id="radar-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">점수 비교 바 차트</div>
+            <canvas id="bar-chart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            📊 상세 비교표
+            <button class="btn btn-success btn-sm" onclick="exportExcelCompare()">Excel 내보내기</button>
+          </div>
+          <div class="compare-table-wrap" id="compare-table-wrap"></div>
+        </div>
+      </div>
+      <div id="compare-empty" class="card flex-center" style="height:200px;color:var(--gray)">
+        좌측에서 2개 이상의 사업을 선택하고 비교 업데이트를 클릭하세요
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+const DATA = {
+  contract: [
+    {id:'c0', no:0, title:'계약방식', method:'자동', question:'수의계약인가?',
+      options:[{label:'Yes - 수의계약',score:100},{label:'No - 일반 입찰',score:0}]}
+  ],
+  customerRel: [
+    {id:'cr1', no:1, title:'사업 발굴 시기', method:'입력', question:'SDS가 본 사업에 참여한 시점은?',
+      options:[
+        {label:'사업 기획 단계부터 사전영업 진행', score:20},
+        {label:'고객 요청에 의한 사전 제안 자료 제출', score:10},
+        {label:'RFP 준비 단계에 사전영업 수행', score:10},
+        {label:'사전영업 등 없이 RFP 수령', score:0}
+      ]},
+    {id:'cr2', no:2, title:'의사결정 라인', method:'입력/자동', question:'핵심고객(KEY MAN) 확보 여부',
+      options:[
+        {label:'고객 의사결정권자 확보, 고객 실무진 확보', score:10},
+        {label:'고객 의사결정권자 미확보, 고객 실무진 확보', score:5},
+        {label:'고객 의사결정권자 미확보, 고객 실무진 미확보', score:0}
+      ]},
+    {id:'cr3', no:3, title:'기존 고객 납품 실적', method:'자동', question:'고객사 대상 사업 이행 실적은?',
+      options:[
+        {label:'5년내 5건 이상', score:5},
+        {label:'5년내 3~4건', score:4},
+        {label:'5년내 1~2건', score:2},
+        {label:'5년내 실적 없음 또는 과업/검수 관련 분쟁 이력 있음', score:0}
+      ]},
+    {id:'cr4', no:4, title:'평가 기준 적정성', method:'입력/자동', question:'사업 평가기준의 적정성 (기술가격평가비중, 입찰가 하한선 등)',
+      options:[
+        {label:'기술평가 배점 90% 이상 또는 입찰가격 하한선 예산 90% 이상', score:10},
+        {label:'기술평가 배점 80% 이상, 입찰가 하한선 80% 이상', score:7},
+        {label:'기술평가 배점 80% 미만이나 협의를 통해 개선 가능', score:5},
+        {label:'기술평가 배점 80% 미만 또는 최저가 평가', score:0}
+      ]},
+    {id:'cr5', no:5, title:'PI/ISP 선행사업 참여여부', method:'입력/자동', question:'PI/ISP 등 SDS의 선행사업 참여여부는?',
+      options:[
+        {label:'PI/ISP 수행 대상사업 아님 또는 SDS가 PI/ISP 수행한 사업의 본사업', score:10},
+        {label:'PI/ISP를 전문 컨설팅업체가 수행하였으나 컨설팅사가 하도업체로 참여 또는 SDS가 운영업무 수행 중', score:7},
+        {label:'전문 컨설팅업체 또는 고객이 PI/ISP를 직접 수행하였으나 사업목표, 범위를 파악하고 있음', score:5},
+        {label:'경쟁사가 PI/ISP 수행한 사업의 본사업에 참여이나 사업목표, 범위를 파악하고 있음', score:3},
+        {label:'경쟁사가 RFI 작성에 관여하고 고객이 RFP에 반영할 것으로 예측되는 사업', score:0}
+      ]}
+  ],
+  competition: [
+    {id:'comp6', no:6, title:'경쟁사 실적', method:'입력', question:'주요 경쟁사의 고객사 대상 사업 이행 실적은?',
+      options:[
+        {label:'해당 고객 대상 이전 사업 수행이력 無', score:10},
+        {label:'5년내 해당 고객 대상 이전 사업 수행이력 有', score:6.7},
+        {label:'3년내 해당 고객 대상 이전 사업 수행이력 有', score:3.3},
+        {label:'고객사가 경쟁사의 Captive 고객임', score:0}
+      ]},
+    {id:'comp7', no:7, title:'시장점유율 / 업계평가', method:'입력', question:'주요 과업/서비스에 대한 시장점유율 및 업계평가는 주요경쟁사 대비 어떠한가?',
+      options:[
+        {label:'SDS 우세', score:10},
+        {label:'동등', score:5},
+        {label:'경쟁사 우세', score:0}
+      ]}
+  ],
+  capability: [
+    {id:'cap8', no:8, title:'가격 경쟁력', method:'입력', question:'상품/서비스 경쟁력 유무 (예측 포함)',
+      options:[
+        {label:'경쟁사 대비 낮은 가격으로 입찰 가능', score:10},
+        {label:'경쟁사와 유사한 가격으로 입찰 가능', score:5},
+        {label:'경쟁사 대비 높은 가격으로 입찰', score:0}
+      ]},
+    {id:'cap9', no:9, title:'핵심 파트너 확보', method:'입력/자동', question:'핵심 파트너 확보를 통해 SDS 경쟁력 확대 가능 여부',
+      options:[
+        {label:'핵심 파트너사 또는 사업경험 보유회사 확보 확정', score:10},
+        {label:'핵심 파트너 확보 협의중', score:5},
+        {label:'핵심 파트너사 또는 사업경험 보유회사가 경쟁사와 협의중', score:0}
+      ]},
+    {id:'cap10', no:10, title:'레퍼런스 / 사업준비', method:'입력/자동', question:'사업준비 (유사사업 경험 및 사업 준비기간)',
+      options:[
+        {label:'최근 3년내 유사사업 3회 이상이며 고객협업하여 사업준비 중', score:5},
+        {label:'최근 3년내 유사사업 1~2회이며 고객협업하여 사업준비 중', score:3.8},
+        {label:'최근 3년내 유사사업 1~2회이며 경험인력 확보 등 사업준비 가능 또는 최근 3년내 유사사업 없으나 고객협업하여 사업준비 중', score:2.5},
+        {label:'최근 3년내 유사사업 없으나, 경험인력 확보 등 사업준비 가능', score:1.3},
+        {label:'최근 3년내 유사사업 없으며, 사업정보 확보 미흡', score:0}
+      ]}
+  ],
+  strategy: [
+    {id:'st1', no:1, title:'전략고객 여부', method:'입력', question:'전략고객 여부',
+      options:[{label:'Yes - 전략고객',score:20},{label:'No',score:0}]},
+    {id:'st2', no:2, title:'집중사업 해당 여부', method:'입력', question:'집중사업 (MSP, CSP, ERP, SaaS) 해당 여부',
+      options:[{label:'Yes - 집중사업 해당',score:20},{label:'No',score:0}]},
+    {id:'st3', no:3, title:'레퍼런스 확보 / 리커링 사업', method:'입력', question:'레퍼런스 확보 필요 및 리커링 사업 여부 (시장 초기 진입, 후속사업을 위하여 수주해야 하는 선행사업 등)',
+      options:[{label:'Yes - 해당',score:20},{label:'No',score:0}]}
+  ],
+  profit: [
+    {id:'pr4', no:4, title:'사업 규모 (수주예상액)', method:'입력', question:'사업 규모는?',
+      options:[
+        {label:'100억 초과 (S급)',score:20},
+        {label:'100억~50억 초과 (A급)',score:15},
+        {label:'50억~20억 초과 (B급)',score:10},
+        {label:'20억 이하 (C급)',score:0}
+      ]},
+    {id:'pr6', no:6, title:'영업이익률 (5년내)', method:'입력', question:'해당 고객 5년내 영업이익률',
+      options:[
+        {label:'10% 이상',score:20},
+        {label:'5% ~ 10% 미만 또는 사업실적 없음',score:10},
+        {label:'5% 미만',score:0}
+      ]}
+  ],
+  scope: [
+    {id:'sc1', no:1, title:'사업범위 명확화', method:'입력', question:'사업범위 정의 수준',
+      options:[
+        {label:'사업범위가 명확하고 구체적으로 정의되어 있음', score:20},
+        {label:'일부 사업범위/업무수행/연계 범위가 불명확하나, 제안서 등으로 헤징 가능함', score:10},
+        {label:'사업범위/업무수행/연계 범위가 불명확하고 헤징이 불가능함', score:0}
+      ]},
+    {id:'sc2', no:2, title:'고객역할 명확성', method:'입력', question:'고객 역할별 참여 인력의 선정, 투입시기, 투입규모가 명확한가?',
+      options:[
+        {label:'선정, 투입시기, 투입규모가 명확하게 명시됨', score:10},
+        {label:'명시되었으나 일부 미흡함', score:5},
+        {label:'선정, 투입시기, 투입규모 모두 미정의', score:0}
+      ]},
+    {id:'sc3', no:3, title:'컨소시엄간 역할/책임', method:'입력', question:'컨소시엄 간 역할 및 책임 범위',
+      options:[
+        {label:'컨소시엄 검토대상 아니거나, 각사 간 업무구분과 책임범위가 명확함', score:10},
+        {label:'컨소시엄 업무 협약서가 체결되었으나 역할 및 책임범위 등이 불명확', score:5},
+        {label:'컨소시엄 업무 협약서가 체결되지 않아 역할 및 책임범위 등이 불명확', score:0}
+      ]}
+  ],
+  exec: [
+    {id:'ex4', no:4, title:'솔루션 적정성', method:'입력', question:'솔루션의 해당 버전 기능이 고객 요구사항을 충족하는가?',
+      options:[
+        {label:'솔루션의 해당 버전 기능이 고객 요구사항을 모두 충족 (커스터마이징 없음)', score:10},
+        {label:'솔루션이 일부 고객 요구사항을 충족하지 못하나, 미충족 기능을 제외하고 제안', score:7},
+        {label:'적용예정 솔루션에 대해 과거 구축경험 보유하고 이슈발생시 자체 control 가능', score:4},
+        {label:'검토되지 않음 (판단불가)', score:3},
+        {label:'솔루션이 일부 고객 요구사항을 충족하지 못하여 대응방안 필요', score:0}
+      ]},
+    {id:'ex5', no:5, title:'자체 인력 비중', method:'입력', question:'총용역원가에 대한 자체인력 투입비중',
+      options:[
+        {label:'자체인력 투입비중이 40% 이상 투입 가능', score:10},
+        {label:'자체인력 투입비중이 40% 미만이나, 검증된 파트너사를 활용하여 프로젝트 수행 가능', score:5},
+        {label:'인력부족으로 총용역원가에 대한 자체인력 투입비중이 40% 미만', score:0}
+      ]},
+    {id:'ex6', no:6, title:'외주업체 적정성', method:'입력', question:'외주업체는 적격 업체로 선정되어 있는가?',
+      options:[
+        {label:'외주업체는 적격 업체로 선정되어 있음', score:10},
+        {label:'전문 협력사 Line-up에 포함되어 있지 않으나 신규등록 조건 충족', score:5},
+        {label:'외주업체 미선정 또는 부정적 평가', score:0}
+      ]}
+  ],
+  cost: [
+    {id:'co7', no:7, title:'업무별 투입 공수 적정성', method:'입력', question:'업무별 투입 공수는 적절히 산정되었는가?',
+      options:[
+        {label:'수행대상이 사업내용으로부터 명확하게 세부업무 단위로 구체화되어 규모를 추정함', score:15},
+        {label:'수행대상이 세부업무 단위로 구체화되지 않음', score:10},
+        {label:'수행대상의 추정규모에 대한 추정근거가 미약', score:0}
+      ]},
+    {id:'co8', no:8, title:'제품 공급 필요금액 적정성', method:'입력', question:'제품 공급 필요금액은 적정한 기준으로 반영되었는가?',
+      options:[
+        {label:'제품의 원가와 공급방식을 고려하여 적절하게 반영됨', score:15},
+        {label:'제품 공급 견적의 원가 산정 등 변동 리스크가 존재', score:10},
+        {label:'제품의 원가와 공급방식이 불명확함', score:0}
+      ]}
+  ]
+};
+
+// Section definitions
+const SECTIONS = [
+  {
+    name:'① 수주 확도', key:'s1',
+    groups:[
+      {name:'계약', items: DATA.contract},
+      {name:'고객관계', maxCat:55, items: DATA.customerRel},
+      {name:'경쟁강도', maxCat:20, items: DATA.competition},
+      {name:'수행역량', maxCat:25, items: DATA.capability}
+    ]
+  },
+  {
+    name:'② 사업 중요도', key:'s2',
+    groups:[
+      {name:'전략부합', maxCat:60, items: DATA.strategy},
+      {name:'규모/이익', maxCat:40, items: DATA.profit}
+    ]
+  },
+  {
+    name:'③ 위험 점검', key:'s3',
+    groups:[
+      {name:'과업범위', maxCat:40, items: DATA.scope},
+      {name:'수행역량', maxCat:30, items: DATA.exec},
+      {name:'원가 적정성', maxCat:30, items: DATA.cost}
+    ]
+  }
+];
+
+const COLORS = [
+  {border:'#3b82f6', bg:'rgba(59,130,246,0.15)'},
+  {border:'#10b981', bg:'rgba(16,185,129,0.15)'},
+  {border:'#f59e0b', bg:'rgba(245,158,11,0.15)'},
+  {border:'#ef4444', bg:'rgba(239,68,68,0.15)'},
+  {border:'#8b5cf6', bg:'rgba(139,92,246,0.15)'}
+];
+
+// ===================== STATE =====================
+const STATE = {
+  projects: [],
+  currentId: null,
+  selections: {},
+  notes: {},
+  isContract: false,
+  activeTab: 0,
+  radarChart: null,
+  barChart: null,
+  compareIds: []
+};
+
+// ===================== SCORE CALC =====================
+function calcScore1(sel, isContract) {
+  if (isContract === true) return 100;
+  const groups = [...DATA.customerRel, ...DATA.competition, ...DATA.capability];
+  return groups.reduce((sum, item) => {
+    const idx = sel[item.id];
+    return sum + (idx !== undefined ? item.options[idx].score : 0);
+  }, 0);
+}
+function calcScore2(sel) {
+  return [...DATA.strategy, ...DATA.profit].reduce((sum, item) => {
+    const idx = sel[item.id];
+    return sum + (idx !== undefined ? item.options[idx].score : 0);
+  }, 0);
+}
+function calcScore3(sel) {
+  return [...DATA.scope, ...DATA.exec, ...DATA.cost].reduce((sum, item) => {
+    const idx = sel[item.id];
+    return sum + (idx !== undefined ? item.options[idx].score : 0);
+  }, 0);
+}
+function calcTotal(s1, s2, s3) { return (s1 + s2 + s3) / 3; }
+function calcGrade(total) {
+  if (total >= 80) return 'S등급';
+  if (total >= 65) return 'A등급';
+  if (total >= 50) return 'B등급';
+  if (total >= 35) return 'C등급';
+  return 'D등급';
+}
+function gradeKey(grade) { return grade.replace('등급',''); }
+
+// ===================== TOAST =====================
+function showToast(msg, type='green') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => {
+    el.classList.add('fade');
+    setTimeout(() => el.remove(), 300);
+  }, 3000);
+}
+
+// ===================== VIEW SWITCHING =====================
+function showView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.getElementById('nav-'+view).classList.add('active');
+  if (view === 'list') { fetchProjects().then(renderList); }
+  if (view === 'compare') { renderCompareSelector(); }
+}
+
+// ===================== RENDER QUESTIONS =====================
+function renderAllQuestions() {
+  SECTIONS.forEach((section, sIdx) => {
+    const container = document.getElementById('q-container-'+sIdx);
+    if (!container) return;
+    container.innerHTML = '';
+    section.groups.forEach(group => {
+      group.items.forEach(item => {
+        container.appendChild(buildQuestionCard(item, sIdx));
+      });
+    });
+  });
+  updateContractState();
+}
+
+function buildQuestionCard(item, sIdx) {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  card.id = 'qcard-'+item.id;
+
+  const curIdx = STATE.selections[item.id];
+  const curScore = curIdx !== undefined ? item.options[curIdx].score : null;
+  if (curIdx !== undefined) card.classList.add('has-selection');
+
+  const optionsHtml = item.options.map((opt, oIdx) => `
+    <label class="q-option ${curIdx===oIdx?'selected':''}" id="qopt-${item.id}-${oIdx}">
+      <input type="radio" name="q-${item.id}" value="${oIdx}" ${curIdx===oIdx?'checked':''}
+        onchange="selectOption('${item.id}', ${oIdx}, ${sIdx})">
+      <span class="opt-label">${opt.label}</span>
+      <span class="opt-score">${opt.score}점</span>
+    </label>
+  `).join('');
+
+  const noteVal = STATE.notes[item.id] || '';
+
+  card.innerHTML = `
+    <div class="q-header">
+      <div class="q-num">${item.no}</div>
+      <div class="q-title-area">
+        <span class="q-title">${item.title}</span>
+        <span class="q-method">${item.method}</span>
+        <div class="q-question">${item.question}</div>
+      </div>
+      <div class="q-score-badge" id="qscore-${item.id}">${curScore !== null ? curScore+'점' : '-'}</div>
+    </div>
+    <div class="q-options">${optionsHtml}</div>
+    <div class="note-label">비고</div>
+    <textarea class="q-note" placeholder="비고 입력..." oninput="updateNote('${item.id}', this.value)">${noteVal}</textarea>
+  `;
+  return card;
+}
+
+function selectOption(itemId, optIdx, sIdx) {
+  STATE.selections[itemId] = optIdx;
+  // Update option highlights
+  const item = findItem(itemId);
+  if (!item) return;
+  item.options.forEach((_, i) => {
+    const el = document.getElementById(`qopt-${itemId}-${i}`);
+    if (el) el.classList.toggle('selected', i === optIdx);
+  });
+  const card = document.getElementById('qcard-'+itemId);
+  if (card) card.classList.add('has-selection');
+  const scoreEl = document.getElementById('qscore-'+itemId);
+  if (scoreEl) scoreEl.textContent = item.options[optIdx].score + '점';
+
+  // Special contract logic
+  if (itemId === 'c0') {
+    STATE.isContract = (optIdx === 0);
+    updateContractState();
+  }
+  updateScores();
+}
+
+function findItem(id) {
+  for (const key of Object.keys(DATA)) {
+    const found = DATA[key].find(i => i.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function updateNote(itemId, val) {
+  if (val) STATE.notes[itemId] = val;
+  else delete STATE.notes[itemId];
+}
+
+function updateContractState() {
+  const contractSelected = STATE.selections['c0'] === 0;
+  STATE.isContract = contractSelected;
+  const alert = document.getElementById('contract-alert');
+  if (alert) alert.classList.toggle('show', contractSelected);
+  // Disable/enable other items in section 0
+  [...DATA.customerRel, ...DATA.competition, ...DATA.capability].forEach(item => {
+    const card = document.getElementById('qcard-'+item.id);
+    if (card) card.classList.toggle('disabled', contractSelected);
+  });
+  updateScores();
+}
+
+function updateScores() {
+  const s1 = calcScore1(STATE.selections, STATE.isContract);
+  const s2 = calcScore2(STATE.selections);
+  const s3 = calcScore3(STATE.selections);
+  const total = calcTotal(s1, s2, s3);
+  const grade = calcGrade(total);
+
+  document.getElementById('sc-s1').textContent = s1.toFixed(1);
+  document.getElementById('sc-s2').textContent = s2.toFixed(1);
+  document.getElementById('sc-s3').textContent = s3.toFixed(1);
+  document.getElementById('sc-total').textContent = total.toFixed(1);
+  document.getElementById('sc-grade').textContent = grade;
+  document.getElementById('progress-fill').style.width = Math.min(total,100) + '%';
+  const badge = document.getElementById('grade-badge-bar');
+  badge.textContent = grade;
+  badge.className = 'grade-badge grade-' + gradeKey(grade);
+}
+
+function updateNavEditing() {
+  const name = document.getElementById('f-name').value;
+  const el = document.getElementById('nav-editing');
+  el.textContent = name ? '📝 ' + name : '';
+}
+
+function switchTab(idx) {
+  STATE.activeTab = idx;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+  document.querySelectorAll('.tab-content').forEach((c,i) => c.classList.toggle('active', i===idx));
+}
+
+// ===================== FORM RESET =====================
+function resetForm() {
+  STATE.currentId = null;
+  STATE.selections = {};
+  STATE.notes = {};
+  STATE.isContract = false;
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-manager').value = '';
+  document.getElementById('f-department').value = '';
+  document.getElementById('f-eval-date').value = todayStr();
+  document.getElementById('f-memo').value = '';
+  document.getElementById('nav-editing').textContent = '';
+  renderAllQuestions();
+  updateScores();
+  switchTab(0);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+
+// ===================== API =====================
+async function fetchProjects() {
+  try {
+    const res = await fetch('/api/projects');
+    if (!res.ok) throw new Error('서버 오류');
+    STATE.projects = await res.json();
+    return STATE.projects;
+  } catch(e) {
+    showToast('오류: 프로젝트 로드 실패 - '+e.message, 'red');
+    return [];
+  }
+}
+
+async function saveProject() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('오류: 사업명을 입력하세요', 'red'); return; }
+
+  const s1 = calcScore1(STATE.selections, STATE.isContract);
+  const s2 = calcScore2(STATE.selections);
+  const s3 = calcScore3(STATE.selections);
+  const total = calcTotal(s1, s2, s3);
+  const grade = calcGrade(total);
+
+  const body = {
+    name,
+    manager: document.getElementById('f-manager').value.trim(),
+    department: document.getElementById('f-department').value.trim(),
+    eval_date: document.getElementById('f-eval-date').value,
+    memo: document.getElementById('f-memo').value.trim(),
+    selections: STATE.selections,
+    notes: STATE.notes,
+    is_contract: STATE.isContract,
+    score1: parseFloat(s1.toFixed(2)),
+    score2: parseFloat(s2.toFixed(2)),
+    score3: parseFloat(s3.toFixed(2)),
+    total: parseFloat(total.toFixed(2)),
+    grade
+  };
+
+  try {
+    let res, data;
+    if (STATE.currentId) {
+      res = await fetch('/api/projects/'+STATE.currentId, {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+      });
+    } else {
+      res = await fetch('/api/projects', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+      });
+    }
+    if (!res.ok) throw new Error('저장 실패 ('+res.status+')');
+    data = await res.json();
+    STATE.currentId = data.id;
+    await fetchProjects();
+    showToast('저장되었습니다', 'green');
+  } catch(e) {
+    showToast('오류: '+e.message, 'red');
+  }
+}
+
+async function deleteProject(id) {
+  if (!confirm('정말 삭제하시겠습니까?')) return;
+  try {
+    const res = await fetch('/api/projects/'+id, {method:'DELETE'});
+    if (!res.ok) throw new Error('삭제 실패');
+    if (STATE.currentId === id) resetForm();
+    await fetchProjects();
+    renderList();
+    showToast('삭제되었습니다', 'orange');
+  } catch(e) {
+    showToast('오류: '+e.message, 'red');
+  }
+}
+
+function loadProject(project) {
+  STATE.currentId = project.id;
+  STATE.selections = project.selections ? {...project.selections} : {};
+  // Convert string keys to numbers if needed
+  Object.keys(STATE.selections).forEach(k => {
+    STATE.selections[k] = parseInt(STATE.selections[k]);
+  });
+  STATE.notes = project.notes ? {...project.notes} : {};
+  STATE.isContract = project.is_contract || false;
+
+  document.getElementById('f-name').value = project.name || '';
+  document.getElementById('f-manager').value = project.manager || '';
+  document.getElementById('f-department').value = project.department || '';
+  document.getElementById('f-eval-date').value = project.eval_date || todayStr();
+  document.getElementById('f-memo').value = project.memo || '';
+  updateNavEditing();
+  renderAllQuestions();
+  updateScores();
+  switchTab(0);
+  showView('form');
+}
+
+// ===================== LIST VIEW =====================
+function renderList() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  const filtered = STATE.projects.filter(p =>
+    (!q || (p.name||'').toLowerCase().includes(q) || (p.manager||'').toLowerCase().includes(q))
+  );
+  const tbody = document.getElementById('list-tbody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state"><div class="icon">📭</div><p>등록된 사업이 없습니다</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((p,i) => `
+    <tr onclick="loadProject(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${p.id}" onchange="updateCompareBtn()"></td>
+      <td>${i+1}</td>
+      <td><strong>${p.name||''}</strong></td>
+      <td>${p.manager||''}</td>
+      <td>${p.department||''}</td>
+      <td>${p.eval_date||''}</td>
+      <td>${scoreChip(p.score1)}</td>
+      <td>${scoreChip(p.score2)}</td>
+      <td>${scoreChip(p.score3)}</td>
+      <td>${scoreChip(p.total)}</td>
+      <td>${gradeBadge(p.grade)}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-outline btn-sm" onclick="loadProject(${JSON.stringify(p).replace(/"/g,'&quot;')})">수정</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="deleteProject(${p.id})">삭제</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function scoreChip(val) {
+  if (val === null || val === undefined) return '-';
+  const n = parseFloat(val);
+  const cls = n >= 70 ? 'chip-green' : n >= 40 ? 'chip-orange' : 'chip-red';
+  return `<span class="score-chip ${cls}">${n.toFixed(1)}</span>`;
+}
+
+function gradeBadge(grade) {
+  if (!grade) return '-';
+  const k = gradeKey(grade);
+  return `<span class="grade-badge grade-${k}">${grade}</span>`;
+}
+
+function toggleCheckAll(cb) {
+  document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+  updateCompareBtn();
+}
+
+function updateCompareBtn() {
+  const checked = document.querySelectorAll('.row-check:checked').length;
+  document.getElementById('compare-selected-btn').disabled = checked < 2;
+}
+
+function compareSelected() {
+  const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(c => parseInt(c.value));
+  STATE.compareIds = ids;
+  showView('compare');
+  // Pre-check these in the compare selector
+  setTimeout(() => {
+    document.querySelectorAll('.compare-cb').forEach(cb => {
+      cb.checked = ids.includes(parseInt(cb.value));
+      cb.closest('.compare-item').classList.toggle('checked', cb.checked);
+    });
+    updateCompare();
+  }, 50);
+}
+
+// ===================== COMPARE VIEW =====================
+function renderCompareSelector() {
+  const el = document.getElementById('compare-selector');
+  if (!STATE.projects.length) {
+    el.innerHTML = '<p style="color:var(--gray);padding:16px;text-align:center">저장된 사업이 없습니다</p>';
+    return;
+  }
+  el.innerHTML = STATE.projects.map(p => `
+    <div class="compare-item" id="ci-${p.id}">
+      <input type="checkbox" class="compare-cb" value="${p.id}"
+        ${STATE.compareIds.includes(p.id)?'checked':''}
+        onchange="toggleCompareItem(this, ${p.id})">
+      <div style="flex:1">
+        <div class="ci-name">${p.name}</div>
+        <div class="ci-meta">${p.eval_date||''} · 종합 ${parseFloat(p.total||0).toFixed(1)}점 · ${p.grade||''}</div>
+      </div>
+    </div>
+  `).join('');
+  // Apply checked state
+  document.querySelectorAll('.compare-cb').forEach(cb => {
+    cb.closest('.compare-item').classList.toggle('checked', cb.checked);
+  });
+}
+
+function toggleCompareItem(cb, id) {
+  const checked = document.querySelectorAll('.compare-cb:checked');
+  if (checked.length > 5 && cb.checked) {
+    cb.checked = false;
+    showToast('최대 5개까지 선택 가능합니다', 'orange');
+    return;
+  }
+  cb.closest('.compare-item').classList.toggle('checked', cb.checked);
+}
+
+function updateCompare() {
+  const ids = Array.from(document.querySelectorAll('.compare-cb:checked')).map(cb => parseInt(cb.value));
+  STATE.compareIds = ids;
+  const projects = STATE.projects.filter(p => ids.includes(p.id));
+
+  if (projects.length < 2) {
+    document.getElementById('compare-charts').style.display = 'none';
+    document.getElementById('compare-empty').style.display = 'flex';
+    return;
+  }
+  document.getElementById('compare-charts').style.display = 'block';
+  document.getElementById('compare-empty').style.display = 'none';
+
+  renderRadarChart(projects);
+  renderBarChart(projects);
+  renderCompareTable(projects);
+}
+
+function renderRadarChart(projects) {
+  const ctx = document.getElementById('radar-chart').getContext('2d');
+  if (STATE.radarChart) STATE.radarChart.destroy();
+  STATE.radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['수주확도','사업중요도','위험점검'],
+      datasets: projects.map((p, i) => ({
+        label: p.name,
+        data: [parseFloat(p.score1||0), parseFloat(p.score2||0), parseFloat(p.score3||0)],
+        borderColor: COLORS[i].border,
+        backgroundColor: COLORS[i].bg,
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: COLORS[i].border
+      }))
+    },
+    options: {
+      responsive: true,
+      scales: { r: { beginAtZero: true, max: 100, ticks: { font:{size:10} } } },
+      plugins: { legend: { position: 'bottom', labels:{font:{size:11}} } }
+    }
+  });
+}
+
+function renderBarChart(projects) {
+  const ctx = document.getElementById('bar-chart').getContext('2d');
+  if (STATE.barChart) STATE.barChart.destroy();
+  STATE.barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: projects.map(p => p.name.length > 8 ? p.name.slice(0,8)+'…' : p.name),
+      datasets: [
+        {
+          label: '수주확도',
+          data: projects.map(p => parseFloat(p.score1||0)),
+          backgroundColor: 'rgba(59,130,246,0.7)',
+          borderColor: '#3b82f6', borderWidth: 1
+        },
+        {
+          label: '사업중요도',
+          data: projects.map(p => parseFloat(p.score2||0)),
+          backgroundColor: 'rgba(16,185,129,0.7)',
+          borderColor: '#10b981', borderWidth: 1
+        },
+        {
+          label: '위험점검',
+          data: projects.map(p => parseFloat(p.score3||0)),
+          backgroundColor: 'rgba(245,158,11,0.7)',
+          borderColor: '#f59e0b', borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true, max: 100 } },
+      plugins: { legend: { position: 'bottom', labels:{font:{size:11}} } }
+    }
+  });
+}
+
+function renderCompareTable(projects) {
+  const wrap = document.getElementById('compare-table-wrap');
+  const pCols = projects.map(p => `<th>${p.name}</th>`).join('');
+  let html = `<table class="compare-table"><thead><tr>
+    <th>구분</th><th>항목</th><th>배점</th>${pCols}
+  </tr></thead><tbody>`;
+
+  SECTIONS.forEach(section => {
+    html += `<tr class="section-row"><td colspan="${3+projects.length}"><strong>${section.name}</strong></td></tr>`;
+    section.groups.forEach(group => {
+      html += `<tr class="cat-row"><td colspan="2">${group.name}</td><td>${group.maxCat||'-'}</td>${projects.map(p=>`<td></td>`).join('')}</tr>`;
+      let catSums = projects.map(() => 0);
+      group.items.forEach(item => {
+        const maxScore = Math.max(...item.options.map(o=>o.score));
+        const pCells = projects.map((p, pi) => {
+          const sel = p.selections || {};
+          const idx = sel[item.id];
+          if (idx === undefined || idx === null) return '<td>-</td>';
+          const opt = item.options[parseInt(idx)];
+          catSums[pi] += opt ? opt.score : 0;
+          return `<td>${opt ? opt.label.slice(0,20)+'…' : '-'}<br><strong>${opt ? opt.score+'점' : ''}</strong></td>`;
+        }).join('');
+        html += `<tr><td>${item.title}</td><td style="color:var(--gray);font-size:11px">${item.question.slice(0,30)}…</td><td>${maxScore}</td>${pCells}</tr>`;
+      });
+      // Subtotal
+      html += `<tr class="subtotal-row"><td colspan="2">소계</td><td>${group.maxCat||''}</td>${catSums.map(s=>`<td><strong>${s.toFixed(1)}</strong></td>`).join('')}</tr>`;
+    });
+  });
+
+  // Section totals
+  const sectionScoreKeys = ['score1','score2','score3'];
+  SECTIONS.forEach((section, si) => {
+    html += `<tr class="total-row" style="background:#dbeafe"><td colspan="2">📊 ${section.name} 총계</td><td>100</td>${projects.map(p=>`<td><strong>${parseFloat(p[sectionScoreKeys[si]]||0).toFixed(1)}</strong></td>`).join('')}</tr>`;
+  });
+  html += `<tr class="total-row" style="background:#1a3a6c;color:#fff"><td colspan="2">🏆 종합 점수</td><td>100</td>${projects.map(p=>`<td><strong>${parseFloat(p.total||0).toFixed(1)} (${p.grade||''})</strong></td>`).join('')}</tr>`;
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// ===================== EXCEL EXPORT (Single) =====================
+function exportExcelSingle() {
+  if (!window.XLSX) { showToast('오류: XLSX 라이브러리 로드 실패', 'red'); return; }
+  const name = document.getElementById('f-name').value.trim() || '미정';
+  const date = document.getElementById('f-eval-date').value || todayStr();
+  const s1 = calcScore1(STATE.selections, STATE.isContract);
+  const s2 = calcScore2(STATE.selections);
+  const s3 = calcScore3(STATE.selections);
+  const total = calcTotal(s1,s2,s3);
+  const grade = calcGrade(total);
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 요약
+  const summaryData = [
+    ['사업성 평가 요약'],
+    ['사업명', name],
+    ['담당자', document.getElementById('f-manager').value],
+    ['부서', document.getElementById('f-department').value],
+    ['작성일', date],
+    ['메모', document.getElementById('f-memo').value],
+    [],
+    ['구분', '점수'],
+    ['① 수주확도', s1.toFixed(2)],
+    ['② 사업중요도', s2.toFixed(2)],
+    ['③ 위험점검', s3.toFixed(2)],
+    ['종합점수', total.toFixed(2)],
+    ['등급', grade]
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), '요약');
+
+  // Sheet 2~4: each section
+  const sectionDefs = [
+    {name:'수주확도', groups:[...DATA.contract,...DATA.customerRel,...DATA.competition,...DATA.capability]},
+    {name:'사업중요도', groups:[...DATA.strategy,...DATA.profit]},
+    {name:'위험점검', groups:[...DATA.scope,...DATA.exec,...DATA.cost]}
+  ];
+  sectionDefs.forEach(sec => {
+    const rows = [['번호','항목','질문','선택 옵션','점수','비고']];
+    sec.groups.forEach(item => {
+      const idx = STATE.selections[item.id];
+      const opt = idx !== undefined ? item.options[idx] : null;
+      rows.push([item.no, item.title, item.question, opt?opt.label:'-', opt?opt.score:'-', STATE.notes[item.id]||'']);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sec.name);
+  });
+
+  XLSX.writeFile(wb, `사업평가_${name}_${date}.xlsx`);
+  showToast('Excel 파일이 다운로드되었습니다', 'green');
+}
+
+// ===================== EXCEL EXPORT (Compare) =====================
+function exportExcelCompare() {
+  if (!window.XLSX) { showToast('오류: XLSX 라이브러리 로드 실패', 'red'); return; }
+  const projects = STATE.projects.filter(p => STATE.compareIds.includes(p.id));
+  if (projects.length < 2) { showToast('오류: 2개 이상 선택하세요', 'red'); return; }
+  const date = todayStr();
+  const wb = XLSX.utils.book_new();
+
+  const headers = ['구분','항목','배점', ...projects.map(p=>p.name)];
+  const rows = [headers];
+
+  SECTIONS.forEach(section => {
+    rows.push([section.name]);
+    section.groups.forEach(group => {
+      rows.push(['', group.name, group.maxCat||'']);
+      let catSums = projects.map(()=>0);
+      group.items.forEach(item => {
+        const maxScore = Math.max(...item.options.map(o=>o.score));
+        const pCells = projects.map((p,pi) => {
+          const sel = p.selections||{};
+          const idx = sel[item.id];
+          if (idx===undefined) return '-';
+          const opt = item.options[parseInt(idx)];
+          if (opt) catSums[pi] += opt.score;
+          return opt ? `${opt.label} (${opt.score}점)` : '-';
+        });
+        rows.push(['', item.title, maxScore, ...pCells]);
+      });
+      rows.push(['', '소계', group.maxCat||'', ...catSums.map(s=>s.toFixed(1))]);
+    });
+  });
+  rows.push(['종합점수','','', ...projects.map(p=>parseFloat(p.total||0).toFixed(1))]);
+  rows.push(['등급','','', ...projects.map(p=>p.grade||'')]);
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), '비교');
+  XLSX.writeFile(wb, `사업비교_${date}.xlsx`);
+  showToast('비교 Excel이 다운로드되었습니다', 'green');
+}
+
+// ===================== PDF / PRINT =====================
+function exportPDF() {
+  generatePrintReport();
+  window.print();
+}
+
+function generatePrintReport() {
+  const name = document.getElementById('f-name').value || '(미정)';
+  const manager = document.getElementById('f-manager').value;
+  const dept = document.getElementById('f-department').value;
+  const date = document.getElementById('f-eval-date').value;
+  const memo = document.getElementById('f-memo').value;
+
+  const s1 = calcScore1(STATE.selections, STATE.isContract);
+  const s2 = calcScore2(STATE.selections);
+  const s3 = calcScore3(STATE.selections);
+  const total = calcTotal(s1,s2,s3);
+  const grade = calcGrade(total);
+
+  let tableRows = '';
+  SECTIONS.forEach(section => {
+    tableRows += `<tr class="section-r"><td colspan="4"><strong>${section.name}</strong></td></tr>`;
+    section.groups.forEach(group => {
+      group.items.forEach(item => {
+        const idx = STATE.selections[item.id];
+        const opt = idx !== undefined ? item.options[idx] : null;
+        const note = STATE.notes[item.id] || '';
+        tableRows += `<tr ${opt?'class="selected-r"':''}>
+          <td>${item.no}. ${item.title}</td>
+          <td>${item.question}</td>
+          <td>${opt ? opt.label : '-'}</td>
+          <td>${opt ? opt.score+'점' : '-'}</td>
+        </tr>`;
+        if (note) tableRows += `<tr><td colspan="4" style="color:#64748b;font-size:10px;padding-left:20px">📝 ${note}</td></tr>`;
+      });
+    });
+  });
+
+  document.getElementById('print-report').innerHTML = `
+    <div class="pr-section">
+      <div class="pr-title">📊 사업성 평가 보고서</div>
+      <div class="pr-info-grid">
+        <div class="pr-info-item"><label>사업명</label><p>${name}</p></div>
+        <div class="pr-info-item"><label>담당자</label><p>${manager||'-'}</p></div>
+        <div class="pr-info-item"><label>부서</label><p>${dept||'-'}</p></div>
+        <div class="pr-info-item"><label>작성일</label><p>${date||'-'}</p></div>
+        ${memo?`<div class="pr-info-item" style="grid-column:1/-1"><label>메모</label><p>${memo}</p></div>`:''}
+      </div>
+      <div class="pr-score-boxes">
+        <div class="pr-score-box"><div style="font-size:11px;color:#64748b">종합점수</div><div style="font-size:24px;font-weight:800">${total.toFixed(1)}</div><div style="font-size:12px">${grade}</div></div>
+        <div class="pr-score-box"><div style="font-size:11px;color:#64748b">① 수주확도</div><div style="font-size:20px;font-weight:700">${s1.toFixed(1)}</div></div>
+        <div class="pr-score-box"><div style="font-size:11px;color:#64748b">② 사업중요도</div><div style="font-size:20px;font-weight:700">${s2.toFixed(1)}</div></div>
+        <div class="pr-score-box"><div style="font-size:11px;color:#64748b">③ 위험점검</div><div style="font-size:20px;font-weight:700">${s3.toFixed(1)}</div></div>
+      </div>
+    </div>
+    <div class="pr-section">
+      <table class="pr-table">
+        <thead><tr><th>항목</th><th>질문</th><th>선택</th><th>점수</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('f-eval-date').value = todayStr();
+  renderAllQuestions();
+  updateScores();
+  await fetchProjects();
+});
+</script>
+</body>
+</html>
